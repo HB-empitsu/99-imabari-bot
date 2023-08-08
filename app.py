@@ -145,5 +145,5 @@ df_hosp = pd.merge(df2, df3, on="name").reindex(["id", "date", "week", "name", "
 if len(df_hosp) > 0:
 
     con = sqlite3.connect("imabariHosp.db")
-    df_hosp.to_sql("hospital", con, if_exists="replace")
+    df_hosp.to_sql("hospital", con, if_exists="replace", index=False)
     con.close()
