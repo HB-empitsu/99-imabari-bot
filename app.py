@@ -130,6 +130,7 @@ df1.loc[flag, "day_time"] = df0.loc[flag, "night_time"]
 
 # 医療科目と開始時間でソート
 df2 = df1.sort_values(by=["date", "診療科目ID", "開始時間"]).reindex(columns=["date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time"]).reset_index(drop=True).copy()
+df2["id"] = df2.index + 1
 
 # df2
 
@@ -138,7 +139,7 @@ csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQijVNaEWw2giRgQJSaBs
 
 df3 = pd.read_csv(csv_url)
 
-df_hosp = pd.merge(df2, df3, on="name")
+df_hosp = pd.merge(df2, df3, on="name").reindex(["id", "date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time", "lat", "lon"])
 
 df_hosp.index += 1
 
