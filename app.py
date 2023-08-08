@@ -139,7 +139,7 @@ csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQijVNaEWw2giRgQJSaBs
 
 df3 = pd.read_csv(csv_url)
 
-df_hosp = pd.merge(df2, df3, on="name").reindex(["id", "date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time", "lat", "lon"])
+df_hosp = pd.merge(df2, df3, on="name").reindex(columns=["id", "date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time", "lat", "lon"])
 
 # データが0のときは保存しない
 if len(df_hosp) > 0:
