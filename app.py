@@ -141,8 +141,6 @@ df3 = pd.read_csv(csv_url)
 
 df_hosp = pd.merge(df2, df3, on="name").reindex(["id", "date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time", "lat", "lon"])
 
-df_hosp.index += 1
-
 # データが0のときは保存しない
 if len(df_hosp) > 0:
 
