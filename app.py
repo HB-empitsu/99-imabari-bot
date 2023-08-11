@@ -153,8 +153,13 @@ csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQijVNaEWw2giRgQJSaBs
 
 df3 = pd.read_csv(csv_url)
 
+# ルート案内のURLを生成
 df3["navi"] = "https://www.google.com/maps/dir/?api=1&destination=" + df3["lat"].astype(str).str.cat(df3["lon"].astype(str), sep=",")
 
+# latまたはlonが欠損の場合は、naviも欠損にする
+df3["navi"].mask(df3[["lat", "lon"]].isna().any(axis=1), inplace=True)
+
+# 医療機関と位置情報を結合する
 df_hosp = pd.merge(df2, df3, on="name").reindex(columns=["id"] + col).sort_values(by="id")
 
 df_hosp
