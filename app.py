@@ -160,7 +160,7 @@ df3["navi"] = "https://www.google.com/maps/dir/?api=1&destination=" + df3["lat"]
 df3["navi"].mask(df3[["lat", "lon"]].isna().any(axis=1), inplace=True)
 
 # 医療機関と位置情報を結合する
-df_hosp = pd.merge(df2, df3, on="name").reindex(columns=["id"] + col).sort_values(by="id")
+df_hosp = pd.merge(df2, df3, on="name", how="left").reindex(columns=["id"] + col).sort_values(by="id")
 
 df_hosp
 
