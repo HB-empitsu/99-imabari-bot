@@ -1,3 +1,5 @@
+import datetime
+import pathlib
 from urllib.parse import urljoin
 
 import pandas as pd
@@ -10,6 +12,7 @@ import sqlite3
 base_url = "http://www.qq.pref.ehime.jp/qq38/WP0805/RP080501BL"
 
 # 今治市地区を選択
+
 payload = {
     "_blockCd": "",
     "forward_next": "",
@@ -29,6 +32,7 @@ payload = {
 }
 
 # 当番医の今治市地区のページにアクセス
+
 with requests.Session() as s:
 
     r = s.get(base_url)
@@ -50,6 +54,7 @@ with requests.Session() as s:
     r = s.post(url, data=payload)
 
 # スクレイピング
+
 soup = BeautifulSoup(r.content, "html.parser")
 
 tables = soup.find_all("table", class_="comTblGyoumuCommon", summary="検索結果一覧を表示しています。")
@@ -71,16 +76,22 @@ for table in tables:
         result.append(data[-5:])
 
 # データラングリング
+
 df0 = (
     pd.DataFrame(result)
     .fillna(method="ffill")
     .set_axis(["医療機関情報", "診療科目", "外来受付時間", "日付", "week"], axis=1)
 )
 
-# df0
+df0
+
+# 列名順番
+col = ["date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time", "date_week", "time", "lat", "lon", "navi"]
 
 # 日付変換
 df0["date"] = pd.to_datetime(df0["日付"].str.extract("(?P<year>\d{4})年(?P<month>\d{1,2})月(?P<day>\d{1,2})日").astype(int))
+
+df0["date_week"] = df0["日付"].str.cat(df0["week"], sep=" ")
 
 # 医療機関情報
 df0[["name", "address", "tel", "night_tel"]] = df0["医療機関情報"].apply(pd.Series).drop([2, 4], axis=1)
@@ -91,11 +102,11 @@ df0["type"] = df0["診療科目"].apply(pd.Series)
 # 外来受付時間
 df0[["day_time", "night_time"]] = df0["外来受付時間"].apply(pd.Series)
 
-df1 = df0.reindex(columns=["date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time"]).copy()
+df1 = df0.reindex(columns = col[:-4]).copy()
 
-# df1.dtypes
+df1.dtypes
 
-# df1
+df1
 
 # ソート用
 
@@ -128,20 +139,28 @@ flag = df1["開始時間"] >= pd.Timedelta("17:00:00")
 df1.loc[flag, "night_time"] = df0.loc[flag, "day_time"]
 df1.loc[flag, "day_time"] = df0.loc[flag, "night_time"]
 
-# 医療科目と開始時間でソート
-df2 = df1.sort_values(by=["date", "診療科目ID", "開始時間"]).reindex(columns=["date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time"]).reset_index(drop=True).copy()
+df1["time"] = df1["day_time"].str.cat(df1["night_time"], na_rep="", sep=" / ").str.strip(" /")
+
+df2 = df1.sort_values(by=["date", "診療科目ID", "開始時間"]).reindex(columns=col[:-3]).reset_index(drop=True).copy()
+
 df2["id"] = df2.index + 1
 
-# df2
+df2
 
 # 位置情報付与
+
 csv_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQijVNaEWw2giRgQJSaBsJJAzdzhR47dQ3NU1eBj9lSCv8-bZnUjD6e2CFUV_YqQqs-xsdKBAWM8LOb/pub?gid=0&single=true&output=csv"
 
 df3 = pd.read_csv(csv_url)
 
-df_hosp = pd.merge(df2, df3, on="name").reindex(columns=["id", "date", "week", "name", "address", "tel", "night_tel", "type", "day_time", "night_time", "lat", "lon"]).sort_values(by="id")
+df3["navi"] = "https://www.google.com/maps/dir/?api=1&destination=" + df3["lat"].astype(str).str.cat(df3["lon"].astype(str), sep=",")
 
-# データが0のときは保存しない
+df_hosp = pd.merge(df2, df3, on="name").reindex(columns=["id"] + col).sort_values(by="id")
+
+df_hosp
+
+df_hosp.to_csv("result.tsv", sep="\t", index=False)
+
 if len(df_hosp) > 0:
 
     con = sqlite3.connect("imabariHosp.db")
