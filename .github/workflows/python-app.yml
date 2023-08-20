@@ -37,6 +37,6 @@ jobs:
         if ! git diff --exit-code --quiet
         then
           git add .
-          git commit -m "DB update" -a
+          git commit -m "CSV update" -a
           git push
         fi
