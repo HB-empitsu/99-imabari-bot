@@ -93,7 +93,6 @@ col = [
     "time_2nd",
     "date_week",
     "time",
-    "class",
     "lat",
     "lon",
     "navi",
@@ -151,17 +150,6 @@ df1["開始時間"] = pd.to_timedelta(df1["time_1st"].str.split("～").str[0] + 
 df1["time"] = (
     df1["time_1st"].str.cat(df1["time_2nd"], na_rep="", sep=" / ").str.strip(" /")
 )
-
-# 現在
-dt_now = pd.Timestamp.now(tz="Asia/Tokyo").tz_localize(None)
-
-df1["class"] = None
-
-df1.loc[df1["date"].dt.date < dt_now.date(), "class"] = "yesterday"
-
-df1.loc[
-    (df1["date"].dt.date == dt_now.date()) & (df1["診療科目ID"] != 0), "class"
-] = "other"
 
 df2 = (
     df1.sort_values(by=["date", "診療科目ID", "開始時間"])
