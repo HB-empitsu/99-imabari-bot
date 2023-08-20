@@ -4,7 +4,6 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-import sqlite3
 
 # えひめ医療情報ネット
 base_url = "http://www.qq.pref.ehime.jp/qq38/WP0805/RP080501BL"
@@ -94,6 +93,7 @@ col = [
     "time_2nd",
     "date_week",
     "time",
+    "class",
     "lat",
     "lon",
     "navi",
@@ -119,11 +119,9 @@ df0["type"] = df0["診療科目"].apply(pd.Series)
 # 外来受付時間
 df0[["time_1st", "time_2nd"]] = df0["外来受付時間"].apply(pd.Series)
 
-df1 = df0.reindex(columns=col[:-4]).copy()
+df1 = df0.reindex(columns=col[:10]).copy()
 
 df1.dtypes
-
-df1
 
 # ソート用
 
@@ -136,29 +134,34 @@ df1["診療科目ID"].mask(df1["type"].str.contains("外科", na=False), 1, inpl
 # 内科系
 df1["診療科目ID"].mask(df1["type"].str.contains("内科", na=False), 2, inplace=True)
 
+
 # 島しょ部
-df1["診療科目ID"].mask(
-    df1["address"].str.contains("吉海町|宮窪町|伯方町|上浦町|大三島町|関前", na=False), 9, inplace=True
-)
-df1["type"].mask(
-    df1["address"].str.contains("吉海町|宮窪町|伯方町|上浦町|大三島町|関前", na=False),
-    "島しょ部",
-    inplace=True,
-)
+simanami_flag = df1["address"].str.contains("吉海町|宮窪町|伯方町|上浦町|大三島町|関前", na=False)
+
+df1["診療科目ID"].mask(simanami_flag, 9, inplace=True)
+
+df1["type"].mask(simanami_flag, "島しょ部", inplace=True)
 
 # その他
 df1["診療科目ID"] = df1["診療科目ID"].fillna(8).astype(int)
 
-# datetimeから文字列に変換
-df1["date"] = df1["date"].dt.strftime("%Y-%m-%d")
-
 # 開始時間
 df1["開始時間"] = pd.to_timedelta(df1["time_1st"].str.split("～").str[0] + ":00")
-
 
 df1["time"] = (
     df1["time_1st"].str.cat(df1["time_2nd"], na_rep="", sep=" / ").str.strip(" /")
 )
+
+# 現在
+dt_now = pd.Timestamp.now(tz="Asia/Tokyo").tz_localize(None)
+
+df1["class"] = None
+
+df1.loc[df1["date"].dt.date < dt_now.date(), "class"] = "yesterday"
+
+df1.loc[
+    (df1["date"].dt.date == dt_now.date()) & (df1["診療科目ID"] != 0), "class"
+] = "other"
 
 df2 = (
     df1.sort_values(by=["date", "診療科目ID", "開始時間"])
@@ -166,8 +169,6 @@ df2 = (
     .reset_index(drop=True)
     .copy()
 )
-
-df2["id"] = df2.index + 1
 
 df2
 
@@ -186,17 +187,8 @@ df3["navi"] = "https://www.google.com/maps/dir/?api=1&destination=" + df3["lat"]
 df3["navi"].mask(df3[["lat", "lon"]].isna().any(axis=1), inplace=True)
 
 # 医療機関と位置情報を結合する
-df_hosp = (
-    pd.merge(df2, df3, on="name", how="left")
-    .reindex(columns=["id"] + col)
-    .sort_values(by="id")
-)
+df_hosp = pd.merge(df2, df3, on="name", how="left").reindex(columns=col)
 
 df_hosp
 
-df_hosp.to_csv("result.tsv", sep="\t", index=False)
-
-if len(df_hosp) > 0:
-    con = sqlite3.connect("imabariHosp.db")
-    df_hosp.to_sql("hospital", con, if_exists="replace", index=False)
-    con.close()
+df_hosp.to_csv("latest.csv", index=False)
